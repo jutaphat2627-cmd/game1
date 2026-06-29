@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>เกมล่าคำสัมผัส</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #8e2de2;
+            --secondary: #4a00e0;
+            --accent: #ff0080;
+            --text-main: #333;
+            --bg-light: rgba(255, 255, 255, 0.9);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Sarabun', sans-serif;
+        }
+
+        h1, h2, h3, h4, .mali-font {
+            font-family: 'Mali', cursive;
+        }
+
+        body {
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            overflow: hidden; /* Prevent body scroll */
+            touch-action: none; /* Prevent browser gestures */
+            color: var(--text-main);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Background Decorations */
+        .bg-decor {
+            position: fixed;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .cloud {
+            background: white;
+            border-radius: 50px;
+            opacity: 0.7;
+            position: absolute;
+        }
+
+        /* Screen Management */
+        .screen {
+            position: fixed;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        .panel {
+            background: var(--bg-light);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 3px solid white;
+        }
+
+        button {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(74, 0, 224, 0.4);
+            margin: 10px;
+            font-family: 'Mali', cursive;
+            font-weight: bold;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(74, 0, 224, 0.4);
+        }
+        button.btn-danger {
+            background: linear-gradient(to right, #ff416c, #ff4b2b);
+            box-shadow: 0 4px 15px rgba(255, 65, 108, 0.4);
+        }
+        button.btn-small {
+            padding: 8px 15px;
+            font-size: 1rem;
+        }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        /* CRITICAL: Bubble Area configuration */
+        #bubbleArea {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            touch-action: none;
+            /* NO overflow: hidden here, to allow bubbles to float fully out */
+            pointer-events: auto;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            font-family: 'Mali', cursive;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.2), 
+                        inset 5px 5px 15px rgba(255,255,255,0.6),
+                        0 5px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.1s; /* Only for tap effect, NOT movement */
+        }
+        .bubble:active {
+            transform: scale(0.9);
+        }
+
+        /* HUD & Game Overlays (Must not block bubbles) */
+        #gameHUD {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 50;
+            pointer-events: none; /* Let clicks pass through to bubbles */
+        }
+        .hud-box {
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            color: var(--secondary);
+            border: 2px solid white;
+        }
+
+        #targetWordContainer {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(to right, #ff9a9e, #fecfef);
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            z-index: 50;
+            pointer-events: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 3px solid white;
+            text-align: center;
+        }
+        #targetWordLabel { font-size: 1rem; color: #555; display: block; margin-bottom: -5px; }
+
+        #countdownOverlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            pointer-events: none;
+        }
+        #countdownText {
+            font-size: 8rem;
+            color: white;
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+            font-family: 'Mali', cursive;
+        }
+
+        /* Animations for specific UI (not bubbles) */
+        @keyframes popOut {
+            0% { transform: scale(0); }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .shake-screen { animation: shake 0.3s; }
+
+        #resultPanel { width: 450px; }
+        .result-header { font-size: 2.5rem; color: var(--accent); margin-bottom: 10px; }
+        .stars-container { font-size: 2.5rem; color: #ffd700; margin-bottom: 15px; }
+        .stat-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 1.2rem; border-bottom: 1px dashed #ccc; padding-bottom: 5px;}
+        .cert-footer { font-size: 0.9rem; color: #666; margin-top: 20px; text-align: center; }
+
+        .word-pair-item {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            text-align: left;
+        }
+        .word-pair-item input { margin: 5px 0; padding: 8px; font-size: 1rem;}
+        
+        .tab-btn { background: #eee; color: #333; box-shadow: none; }
+        .tab-btn.active { background: var(--primary); color: white; }
+
+        /* Leaderboard table */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #ddd; }
+        th { background: var(--primary); color: white; }
+        tr:nth-child(1) td { font-weight: bold; color: #d4af37; font-size: 1.2rem; } /* Gold */
+        tr:nth-child(2) td { font-weight: bold; color: #c0c0c0; } /* Silver */
+        tr:nth-child(3) td { font-weight: bold; color: #cd7f32; } /* Bronze */
+    </style>
+</head>
+<body>
+
+    <!-- Background Decoration (Z-index 0) -->
+    <div class="bg-decor cloud" style="top: 10%; left: 10%; width: 100px; height: 40px;"></div>
+    <div class="bg-decor cloud" style="top: 25%; right: 15%; width: 120px; height: 50px;"></div>
+    <div class="bg-decor cloud" style="top: 60%; left: 20%; width: 80px; height: 35px;"></div>
+
+    <!-- Screen 1: Home -->
+    <div id="screenHome" class="screen active">
+        <div class="panel">
+            <h1 class="mali-font" id="displayGameName" style="font-size: 2.2rem; color: var(--primary); margin-bottom: 5px;">🎤 ล่าคำสัมผัส</h1>
+            <p style="margin-bottom: 20px; color: #555;">โดย <span id="displayTeacherName">ครูวิว</span><br><small id="displaySchoolName">นอร์เทอร์ดามนครราชสีมา</small></p>
+            
+            <input type="text" id="studentNameInput" placeholder="พิมพ์ชื่อของนักเรียนที่นี่..." maxlength="30">
+            <button onclick="uiStartGameBtn()">▶️ เริ่มเล่นเกม</button>
+            <br>
+            <button class="btn-small" style="background: #4caf50;" onclick="showScreen('screenLeaderboard')">🏆 ตารางคะแนน</button>
+            <button class="btn-small" style="background: #ff9800;" onclick="showScreen('screenSettings')">⚙️ ตั้งค่าสำหรับครู</button>
+        </div>
+    </div>
+
+    <!-- Screen 2: Game Area -->
+    <div id="screenGame" class="screen" style="background: transparent;">
+        <!-- CRITICAL: The area where bubbles float -->
+        <div id="bubbleArea"></div>
+
+        <div id="gameHUD">
+            <div class="hud-box">⏱️ <span id="timeDisplay">60</span>s</div>
+            <div class="hud-box" style="text-align: center;">
+                คะแนน<br><span id="scoreDisplay" style="font-size: 1.5rem;">0</span>
+            </div>
+            <div class="hud-box">🔥 คอมโบ<br><span id="comboDisplay" style="color: #ff0080;">x1</span></div>
+        </div>
+
+        <div id="targetWordContainer">
+            <span id="targetWordLabel">หาคำที่คล้องจองกับ</span>
+            <div id="targetWordDisplay" class="mali-font">...</div>
+        </div>
+
+        <div id="countdownOverlay">
+            <div id="countdownText">3</div>
+        </div>
+    </div>
+
+    <!-- Screen 3: Result -->
+    <div id="screenResult" class="screen">
+        <div class="panel" id="resultPanel">
+            <h1 class="result-header mali-font">สรุปผลการเล่น</h1>
+            <div class="stars-container" id="resultStars">⭐⭐⭐</div>
+            <h2 class="mali-font" style="font-size: 2rem; color: var(--secondary); margin-bottom: 20px;">คะแนน: <span id="resultScore">0</span></h2>
+            
+            <div class="stat-row">
+                <span>ชื่อนักเรียน:</span>
+                <span id="resultStudentName" style="font-weight: bold;">-</span>
+            </div>
+            <div class="stat-row">
+                <span>แตะถูก (คำคล้องจอง):</span>
+                <span style="color: green;"><span id="resultCorrect">0</span> ครั้ง</span>
+            </div>
+            <div class="stat-row">
+                <span>แตะผิด (คำลวง):</span>
+                <span style="color: red;"><span id="resultWrong">0</span> ครั้ง</span>
+            </div>
+            <div class="stat-row">
+                <span>คอมโบสูงสุด:</span>
+                <span style="color: var(--accent);">x<span id="resultMaxCombo">1</span></span>
+            </div>
+
+            <div class="cert-footer">
+                เกม <span id="certGameName"></span><br>
+                ครูผู้สอน: <span id="certTeacherName"></span> | <span id="certSchoolName"></span><br>
+                วันที่: <span id="certDate"></span>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button onclick="saveResultImage()">📸 บันทึกเป็นรูปภาพ</button>
+                <button onclick="showScreen('screenHome')">🏠 กลับหน้าแรก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen 4: Leaderboard -->
+    <div id="screenLeaderboard" class="screen">
+        <div class="panel">
+            <h2 class="mali-font">🏆 ตารางคะแนนสูงสุด</h2>
+            <table id="leaderboardTable">
+                <thead>
+                    <tr>
+                        <th>อันดับ</th>
+                        <th>ชื่อ</th>
+                        <th>คะแนน</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                    <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+            <button style="margin-top: 20px;" onclick="showScreen('screenHome')">🏠 กลับหน้าแรก</button>
+            <button class="btn-small btn-danger" onclick="clearLeaderboard()">🗑️ ล้างข้อมูล</button>
+        </div>
+    </div>
+
+    <!-- Screen 5: Settings (Teacher) -->
+    <div id="screenSettings" class="screen">
+        <div class="panel" style="width: 500px; text-align: left;">
+            <h2 class="mali-font" style="text-align: center; margin-bottom: 15px;">⚙️ ตั้งค่าเกม (สำหรับคุณครู)</h2>
+            
+            <div style="display: flex; margin-bottom: 15px;">
+                <button class="btn-small tab-btn active" id="tabGeneralBtn" onclick="switchTab('General')" style="flex: 1;">ทั่วไป</button>
+                <button class="btn-small tab-btn" id="tabWordsBtn" onclick="switchTab('Words')" style="flex: 1;">ชุดคำศัพท์</button>
+            </div>
+
+            <!-- General Settings Tab -->
+            <div id="tabGeneral">
+                <label>ชื่อเกม:</label>
+                <input type="text" id="setGameName">
+                <label>ชื่อคุณครู:</label>
+                <input type="text" id="setTeacherName">
+                <label>ชื่อโรงเรียน:</label>
+                <input type="text" id="setSchoolName">
+                
+                <label>เวลาเล่น (วินาที):</label>
+                <input type="number" id="setTimeLimit" min="10" max="300">
+                
+                <label>ระดับความยาก:</label>
+                <select id="setDifficulty">
+                    <option value="easy">ง่าย (ฟองช้า, คำลวงน้อย)</option>
+                    <option value="normal">ปานกลาง</option>
+                    <option value="hard">ยาก (ฟองเร็ว, คำลวงมาก)</option>
+                </select>
+
+                <div style="margin-top: 10px;">
+                    <input type="checkbox" id="setSound" style="width: auto; transform: scale(1.5); margin-right: 10px;">
+                    <label for="setSound">เปิดเสียงประกอบ</label>
+                </div>
+            </div>
+
+            <!-- Words Settings Tab -->
+            <div id="tabWords" style="display: none;">
+                <p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">* คำคล้องจองและคำลวง คั่นด้วยเครื่องหมายจุลภาค (,)</p>
+                <div id="wordPairsList">
+                    <!-- Dynamic Word Pairs Editor -->
+                </div>
+                <button class="btn-small" style="width: 100%; background: #4caf50;" onclick="addWordPairUI()">+ เพิ่มชุดคำใหม่</button>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <button onclick="saveSettings()">💾 บันทึกและกลับ</button>
+                <button class="btn-danger" onclick="restoreDefaults()">🔄 คืนค่าเริ่มต้น</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. DEFAULT DATA & STATE
+        // ==========================================
+        const defaultConfigs = {
+            teacherName: "ครูวิว",
+            schoolName: "นอร์เทอร์ดามนครราชสีมา",
+            gameName: "🎤 ล่าคำสัมผัส",
+            timeLimit: 60,
+            difficulty: "normal", // easy, normal, hard
+            soundEnabled: true
+        };
+
+        const defaultWords = [
+            { target: "นา", correct: ["ตา", "ปลา", "มา", "ฟ้า", "ขา", "ยา"], wrong: ["กิน", "ลม", "หมู", "เดิน", "นก"] },
+            { target: "ใจ", correct: ["ไป", "ไม้", "ใหม่", "ไหน", "ให้", "ไอ"], wrong: ["มือ", "ดาว", "สวย", "ตก", "รถ"] },
+            { target: "ดาว", correct: ["ขาว", "หนาว", "ยาว", "สาว", "ก้าว", "ร้าว"], wrong: ["ดิน", "พระ", "โต", "หิน", "ลม"] },
+            { target: "มือ", correct: ["คือ", "ลือ", "ถือ", "ดื้อ", "ซื้อ", "มื้อ"], wrong: ["ตา", "ปาก", "หู", "ผม", "ขา"] },
+            { target: "เดิน", correct: ["เนิน", "เทิน", "เขิน", "เมิน", "เกิน"], wrong: ["วิ่ง", "นอน", "กิน", "นั่ง", "ดู"] },
+            { target: "ดิน", correct: ["หิน", "ถิ่น", "กิน", "บิน", "ชิน", "ริน"], wrong: ["น้ำ", "ไฟ", "ลม", "ทอง", "ทราย"] }
+        ];
+
+        // Game State Variables
+        let configs = {};
+        let wordList = [];
+        let leaderboard = [];
+        let currentTargetWord = {};
+        
+        let gameRunning = false;
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let timeLeft = 0;
+        let timerInterval;
+        let correctCount = 0;
+        let wrongCount = 0;
+        
+        let studentName = "";
+
+        // Audio Context (Initialized on first interaction)
+        let audioCtx;
+
+        // Bubble Management
+        const bubbleArea = document.getElementById('bubbleArea');
+        let bubbles = []; // Array to track active bubbles
+        let animationFrameId;
+        let bubbleSpawnInterval;
+
+        // ==========================================
+        // 2. DATA MANAGEMENT (LocalStorage)
+        // ==========================================
+        function loadData() {
+            // Avoid structuredClone for compatibility
+            let storedConfigs = localStorage.getItem('rhymeHunterConfigs');
+            configs = storedConfigs ? JSON.parse(storedConfigs) : JSON.parse(JSON.stringify(defaultConfigs));
+
+            let storedWords = localStorage.getItem('rhymeHunterWords');
+            wordList = storedWords ? JSON.parse(storedWords) : JSON.parse(JSON.stringify(defaultWords));
+
+            let storedLeaderboard = localStorage.getItem('rhymeHunterLeaderboard');
+            leaderboard = storedLeaderboard ? JSON.parse(storedLeaderboard) : [];
+
+            updateUIFromConfigs();
+        }
+
+        function saveData() {
+            localStorage.setItem('rhymeHunterConfigs', JSON.stringify(configs));
+            localStorage.setItem('rhymeHunterWords', JSON.stringify(wordList));
+            localStorage.setItem('rhymeHunterLeaderboard', JSON.stringify(leaderboard));
+            updateUIFromConfigs();
+        }
+
+        function updateUIFromConfigs() {
+            document.getElementById('displayGameName').innerText = configs.gameName;
+            document.getElementById('displayTeacherName').innerText = configs.teacherName;
+            document.getElementById('displaySchoolName').innerText = configs.schoolName;
+        }
+
+        // ==========================================
+        // 3. AUDIO SYSTEM
+        // ==========================================
+        function initAudio() {
+            if (!configs.soundEnabled) return;
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!configs.soundEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        // Add event listener to initialize audio on first user interaction
+        document.body.addEventListener('pointerdown', initAudio, { once: true });
+
+        // ==========================================
+        // 4. UI SCREEN MANAGEMENT
+        // ==========================================
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            if (screenId === 'screenLeaderboard') renderLeaderboard();
+            if (screenId === 'screenSettings') populateSettings();
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            tbody.innerHTML = '';
+            
+            // Sort highest score first
+            leaderboard.sort((a, b) => b.score - a.score);
+            
+            if (leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">ยังไม่มีข้อมูล</td></tr>';
+                return;
+            }
+
+            // Show top 10
+            const top10 = leaderboard.slice(0, 10);
+            top10.forEach((entry, index) => {
+                let rankStr = index + 1;
+                if (index === 0) rankStr = '🥇 1';
+                else if (index === 1) rankStr = '🥈 2';
+                else if (index === 2) rankStr = '🥉 3';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${rankStr}</td>
+                    <td>${entry.name}</td>
+                    <td>${entry.score}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearLeaderboard() {
+            if(confirm('ยืนยันการล้างข้อมูลกระดานคะแนน?')) {
+                leaderboard = [];
+                saveData();
+                renderLeaderboard();
+            }
+        }
+
+        // ==========================================
+        // 5. SETTINGS MANAGEMENT
+        // ==========================================
+        function switchTab(tab) {
+            document.getElementById('tabGeneral').style.display = tab === 'General' ? 'block' : 'none';
+            document.getElementById('tabWords').style.display = tab === 'Words' ? 'block' : 'none';
+            document.getElementById('tabGeneralBtn').classList.toggle('active', tab === 'General');
+            document.getElementById('tabWordsBtn').classList.toggle('active', tab === 'Words');
+        }
+
+        function populateSettings() {
+            document.getElementById('setGameName').value = configs.gameName;
+            document.getElementById('setTeacherName').value = configs.teacherName;
+            document.getElementById('setSchoolName').value = configs.schoolName;
+            document.getElementById('setTimeLimit').value = configs.timeLimit;
+            document.getElementById('setDifficulty').value = configs.difficulty;
+            document.getElementById('setSound').checked = configs.soundEnabled;
+
+            renderWordPairsEditor();
+        }
+
+        function renderWordPairsEditor() {
+            const container = document.getElementById('wordPairsList');
+            container.innerHTML = '';
+            wordList.forEach((pair, index) => {
+                const div = document.createElement('div');
+                div.className = 'word-pair-item';
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>ชุดคำที่ ${index + 1}</strong>
+                        <button class="btn-small btn-danger" style="margin:0;" onclick="removeWordPair(${index})">ลบ</button>
+                    </div>
+                    <input type="text" id="wp_target_${index}" placeholder="คำโจทย์ (เช่น นา)" value="${pair.target}">
+                    <input type="text" id="wp_correct_${index}" placeholder="คำคล้องจอง (เช่น ตา,ปลา,มา)" value="${pair.correct.join(',')}">
+                    <input type="text" id="wp_wrong_${index}" placeholder="คำลวง (เช่น กิน,หมู)" value="${pair.wrong.join(',')}">
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addWordPairUI() {
+            wordList.push({ target: "", correct: [], wrong: [] });
+            renderWordPairsEditor();
+        }
+
+        function removeWordPair(index) {
+            wordList.splice(index, 1);
+            renderWordPairsEditor();
+        }
+
+        function saveSettings() {
+            configs.gameName = document.getElementById('setGameName').value || defaultConfigs.gameName;
+            configs.teacherName = document.getElementById('setTeacherName').value || defaultConfigs.teacherName;
+            configs.schoolName = document.getElementById('setSchoolName').value || defaultConfigs.schoolName;
+            configs.timeLimit = parseInt(document.getElementById('setTimeLimit').value) || 60;
+            configs.difficulty = document.getElementById('setDifficulty').value;
+            configs.soundEnabled = document.getElementById('setSound').checked;
+
+            // Save words
+            const newWordList = [];
+            for (let i = 0; i < wordList.length; i++) {
+                const target = document.getElementById(`wp_target_${i}`).value.trim();
+                const correctStr = document.getElementById(`wp_correct_${i}`).value;
+                const wrongStr = document.getElementById(`wp_wrong_${i}`).value;
+                
+                if (target) {
+                    newWordList.push({
+                        target: target,
+                        correct: correctStr.split(',').map(s => s.trim()).filter(s => s),
+                        wrong: wrongStr.split(',').map(s => s.trim()).filter(s => s)
+                    });
+                }
+            }
+
+            if (newWordList.length === 0) {
+                alert("ต้องมีคำศัพท์อย่างน้อย 1 ชุด");
+                return;
+            }
+
+            wordList = newWordList;
+            saveData();
+            showScreen('screenHome');
+        }
+
+        function restoreDefaults() {
+            if(confirm('ยืนยันการคืนค่าเริ่มต้นทั้งหมด? ข้อมูลการตั้งค่าและคำศัพท์จะกลับไปเป็นค่าดั้งเดิม')) {
+                configs = JSON.parse(JSON.stringify(defaultConfigs));
+                wordList = JSON.parse(JSON.stringify(defaultWords));
+                saveData();
+                populateSettings();
+            }
+        }
+
+        // ==========================================
+        // 6. GAME ENGINE (BUBBLE PHYSICS)
+        // ==========================================
+        // CRITICAL REQUIREMENTS MET:
+        // - Movement uses JS requestAnimationFrame ONLY.
+        // - No CSS animation for floating.
+        // - Destroyed only when y < -size (offscreen top).
+        
+        function getDifficultySettings() {
+            let speedMin, speedMax, wrongRatio, maxBubbles;
+            switch(configs.difficulty) {
+                case 'easy': speedMin = 1.0; speedMax = 2.0; wrongRatio = 0.2; maxBubbles = 6; break;
+                case 'hard': speedMin = 2.0; speedMax = 4.0; wrongRatio = 0.6; maxBubbles = 10; break;
+                case 'normal': default: speedMin = 1.5; speedMax = 3.0; wrongRatio = 0.4; maxBubbles = 8; break;
+            }
+            // Adjust for mobile screens
+            if (window.innerWidth < 600) {
+                maxBubbles = Math.max(4, maxBubbles - 2); 
+            }
+            return { speedMin, speedMax, wrongRatio, maxBubbles };
+        }
+
+        function createBubble(forceImmediate = false) {
+            if (!gameRunning) return;
+            const diff = getDifficultySettings();
+            
+            // Check if we reached max bubbles
+            if (bubbles.length >= diff.maxBubbles && !forceImmediate) return;
+
+            const isWrong = Math.random() < diff.wrongRatio;
+            let wordText = "";
+            
+            // Pick a word
+            if (isWrong && currentTargetWord.wrong.length > 0) {
+                wordText = currentTargetWord.wrong[Math.floor(Math.random() * currentTargetWord.wrong.length)];
+            } else if (currentTargetWord.correct.length > 0) {
+                wordText = currentTargetWord.correct[Math.floor(Math.random() * currentTargetWord.correct.length)];
+            } else {
+                return; // Failsafe
+            }
+
+            // Create DOM Element
+            const el = document.createElement('div');
+            el.className = 'bubble';
+            el.innerText = wordText;
+            
+            // Aesthetics (Random pastel colors)
+            const hue = Math.floor(Math.random() * 360);
+            el.style.backgroundColor = `hsl(${hue}, 80%, 75%)`;
+            
+            const size = Math.floor(Math.random() * 30) + 70; // 70-100px
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+
+            // Initial Position (Bottom of screen)
+            // CRITICAL: start below innerHeight
+            let startY = window.innerHeight + size;
+            
+            // If forcing immediate (e.g. word changed), spawn somewhat on screen but near bottom
+            if (forceImmediate) {
+                startY = window.innerHeight - (Math.random() * 100);
+            }
+
+            // Random X, ensuring it stays within screen bounds
+            const maxX = window.innerWidth - size;
+            const startX = Math.random() * maxX;
+            
+            el.style.left = startX + 'px';
+            el.style.top = startY + 'px';
+
+            // Interaction - CRITICAL: pointerdown, passive: false
+            el.addEventListener('pointerdown', function(e) {
+                e.preventDefault();
+                handleBubbleTap(this, isWrong);
+            }, { passive: false });
+
+            bubbleArea.appendChild(el);
+
+            // Add to physics array
+            const speed = Math.random() * (diff.speedMax - diff.speedMin) + diff.speedMin;
+            
+            bubbles.push({
+                el: el,
+                y: startY,
+                x: startX,
+                size: size,
+                speed: speed,
+                isWrong: isWrong
+            });
+        }
+
+        // CRITICAL: The Animation Loop
+        function moveBubbles() {
+            if (!gameRunning) return;
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
+                
+                // Move up
+                b.y -= b.speed;
+                b.el.style.top = b.y + 'px';
+                
+                // Add slight horizontal drift for floating effect (optional, safe)
+                const drift = Math.sin(Date.now() / 1000 + b.x) * 0.5;
+                b.el.style.left = (b.x + drift) + 'px';
+
+                // Check boundary (Remove ONLY when fully off top)
+                if (b.y < -b.size) {
+                    b.el.remove();
+                    bubbles.splice(i, 1);
+                    // Spawn a new one to replace if missed
+                    if (!b.isWrong) {
+                        // Missed a correct word, reset combo
+                        combo = 0;
+                        updateHUD();
+                    }
+                    createBubble();
+                }
+            }
+
+            // Loop
+            animationFrameId = requestAnimationFrame(moveBubbles);
+        }
+
+        // ==========================================
+        // 7. GAME LOGIC
+        // ==========================================
+        function pickNewTargetWord() {
+            // Pick a random word pair
+            const prevTarget = currentTargetWord.target;
+            let availableWords = wordList.filter(w => w.target !== prevTarget);
+            if (availableWords.length === 0) availableWords = wordList; // Fallback
+            
+            currentTargetWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+            
+            // Update UI
+            const targetDisplay = document.getElementById('targetWordDisplay');
+            targetDisplay.innerText = currentTargetWord.target;
+            targetDisplay.style.animation = 'none';
+            void targetDisplay.offsetWidth; // trigger reflow
+            targetDisplay.style.animation = 'popOut 0.3s ease-out';
+
+            // Clear old bubbles and spawn new ones immediately
+            clearBubbles();
+            const diff = getDifficultySettings();
+            for(let i=0; i < Math.floor(diff.maxBubbles / 2); i++){
+                createBubble(true); // Force some on screen immediately
+            }
+        }
+
+        function clearBubbles() {
+            bubbles.forEach(b => b.el.remove());
+            bubbles = [];
+        }
+
+        function handleBubbleTap(bubbleEl, isWrong) {
+            if (!gameRunning) return;
+
+            // Find index
+            const index = bubbles.findIndex(b => b.el === bubbleEl);
+            if (index > -1) {
+                // Remove from array and DOM
+                bubbles.splice(index, 1);
+                bubbleEl.remove();
+            } else {
+                return; // Already removed
+            }
+
+            if (isWrong) {
+                // Wrong tap
+                playSound('wrong');
+                wrongCount++;
+                combo = 0;
+                score = Math.max(0, score - 5); // Penalty
+                
+                // Visual feedback (shake screen)
+                document.body.classList.add('shake-screen');
+                setTimeout(() => document.body.classList.remove('shake-screen'), 300);
+                
+            } else {
+                // Correct tap
+                playSound('correct');
+                correctCount++;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                
+                // Calculate points with combo multiplier
+                let points = 10;
+                if (combo > 1) points += (combo * 2);
+                score += points;
+
+                // Visual feedback pop (we create a temp element just for the pop effect)
+                showPopEffect(bubbleEl.style.left, bubbleEl.style.top);
+                
+                // Every 5 correct taps, change target word
+                if (correctCount % 5 === 0) {
+                    pickNewTargetWord();
+                } else {
+                    // Spawn a replacement bubble immediately
+                    createBubble(true);
+                }
+            }
+            
+            updateHUD();
+        }
+
+        function showPopEffect(x, y) {
+            const pop = document.createElement('div');
+            pop.innerText = "⭐";
+            pop.style.position = 'absolute';
+            pop.style.left = x;
+            pop.style.top = y;
+            pop.style.fontSize = '2rem';
+            pop.style.pointerEvents = 'none';
+            pop.style.zIndex = '30';
+            pop.style.transition = 'all 0.5s ease-out';
+            bubbleArea.appendChild(pop);
+            
+            // Animate up and fade out
+            setTimeout(() => {
+                pop.style.transform = 'translateY(-50px) scale(1.5)';
+                pop.style.opacity = '0';
+            }, 10);
+            
+            setTimeout(() => pop.remove(), 500);
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('comboDisplay').innerText = `x${combo}`;
+            document.getElementById('timeDisplay').innerText = timeLeft;
+        }
+
+        // ==========================================
+        // 8. GAME CONTROL (START/STOP)
+        // ==========================================
+        function uiStartGameBtn() {
+            const nameInput = document.getElementById('studentNameInput').value.trim();
+            if (!nameInput) {
+                alert('กรุณาพิมพ์ชื่อนักเรียนก่อนเริ่มเล่นครับ/ค่ะ');
+                return;
+            }
+            studentName = nameInput;
+            initAudio(); // Initialize audio context on this click
+            startSequence();
+        }
+
+        function startSequence() {
+            showScreen('screenGame');
+            clearBubbles();
+            
+            // Reset state
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            correctCount = 0;
+            wrongCount = 0;
+            timeLeft = configs.timeLimit;
+            updateHUD();
+
+            // Prepare word
+            pickNewTargetWord();
+
+            // Show countdown
+            const cdOverlay = document.getElementById('countdownOverlay');
+            const cdText = document.getElementById('countdownText');
+            cdOverlay.style.display = 'flex';
+            
+            let count = 3;
+            cdText.innerText = count;
+            playSound('pop');
+
+            const cdInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    cdText.innerText = count;
+                    playSound('pop');
+                } else if (count === 0) {
+                    cdText.innerText = "เริ่ม!";
+                    playSound('correct');
+                } else {
+                    clearInterval(cdInterval);
+                    cdOverlay.style.display = 'none';
+                    startGameLoop();
+                }
+            }, 1000);
+        }
+
+        function startGameLoop() {
+            gameRunning = true;
+            
+            // 1. Start timer
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            // 2. Start Bubble Movement Loop (CRITICAL)
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(moveBubbles);
+
+            // 3. Start Bubble Spawner (Interval to top up bubbles)
+            if (bubbleSpawnInterval) clearInterval(bubbleSpawnInterval);
+            bubbleSpawnInterval = setInterval(() => {
+                createBubble();
+            }, 500); // Check every 0.5s if we need more bubbles
+        }
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            clearInterval(bubbleSpawnInterval);
+            cancelAnimationFrame(animationFrameId);
+            clearBubbles();
+
+            // Save to leaderboard
+            leaderboard.push({
+                name: studentName,
+                score: score
+            });
+            saveData(); // Save to local storage
+
+            showResult();
+        }
+
+        // ==========================================
+        // 9. RESULT SCREEN & EXPORT
+        // ==========================================
+        function showResult() {
+            showScreen('screenResult');
+            
+            document.getElementById('resultScore').innerText = score;
+            document.getElementById('resultStudentName').innerText = studentName;
+            document.getElementById('resultCorrect').innerText = correctCount;
+            document.getElementById('resultWrong').innerText = wrongCount;
+            document.getElementById('resultMaxCombo').innerText = maxCombo;
+            
+            document.getElementById('certGameName').innerText = configs.gameName;
+            document.getElementById('certTeacherName').innerText = configs.teacherName;
+            document.getElementById('certSchoolName').innerText = configs.schoolName;
+
+            // Date in Buddhist Era
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('th-TH', { 
+                year: 'numeric', month: 'long', day: 'numeric' 
+            });
+            document.getElementById('certDate').innerText = dateStr;
+
+            // Calculate Stars based on correct vs wrong and total attempts
+            let stars = "⭐"; // Default 1 star
+            const totalAttempts = correctCount + wrongCount;
+            if (totalAttempts > 0) {
+                const accuracy = correctCount / totalAttempts;
+                if (accuracy >= 0.8 && correctCount > 5) stars = "⭐⭐⭐";
+                else if (accuracy >= 0.5 && correctCount > 2) stars = "⭐⭐";
+            }
+            if (score === 0) stars = "⭐"; // 0 score = 1 star
+            document.getElementById('resultStars').innerText = stars;
+        }
+
+        function saveResultImage() {
+            const panel = document.getElementById('resultPanel');
+            const btnContainer = panel.lastElementChild;
+            
+            // Hide buttons before capture
+            btnContainer.style.display = 'none';
+            
+            try {
+                html2canvas(panel, { 
+                    scale: 2, // High resolution
+                    backgroundColor: "#ffffff",
+                    useCORS: true
+                }).then(canvas => {
+                    // Show buttons again
+                    btnContainer.style.display = 'block';
+                    
+                    // Create download link
+                    const link = document.createElement('a');
+                    link.download = `ผลคะแนน_${studentName}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                }).catch(err => {
+                    btnContainer.style.display = 'block';
+                    alert('ไม่สามารถสร้างรูปภาพได้: ' + err.message);
+                });
+            } catch (err) {
+                btnContainer.style.display = 'block';
+                alert('เบราว์เซอร์นี้ไม่รองรับการบันทึกรูปภาพ (ต้องการ html2canvas)');
+            }
+        }
+
+        // ==========================================
+        // 10. INITIALIZATION
+        // ==========================================
+        window.onload = () => {
+            loadData();
+        };
+
+    </script>
+</body>
+</html>
